@@ -30,7 +30,8 @@
 #define UC1609_PC_SET 0x06 /**< PC[2:0] 110, Internal V LCD (7x charge pump) + 10b: 1.4mA */
 
 #define UC1609_ADDRESS_CONTROL 0x88 /**< set RAM address control */
-#define UC1609_ADDRESS_SET 0x02 /**< Set AC [2:0] Program registers  for RAM address control.*/
+#define UC1609_ADDRESS_SET 0x01 /**< Set AC [2:0] Program registers  for RAM address control */
+#define UC1609_SET_COM_END 0xF1 /**< Set CEN[5:0] Program the ending COM electrode */
 
 #define UC1609_SET_PAGEADD 0xB0 /**< Page address Set PA[3:0]  */
 #define UC1609_SET_COLADD_LSB 0x00 /**< Column Address Set CA [3:0] */
@@ -55,10 +56,9 @@
 #define UC1609_SCROLL 0x40 /**< scrolls , Set the scroll line number. 0-64 */
 
 // Rotate
-#define UC1609_ROTATION_FLIP_TWO 0x06
 #define UC1609_ROTATION_NORMAL 0x04
-#define UC1609_ROTATION_FLIP_ONE 0x02
-#define UC1609_ROTATION_FLIP_THREE 0x00
+#define UC1609_ROTATION_FLIP 0x02
+#define UC1609_ROTATION_DEFAULT 0x00
 
 /**************************************************************************/
 /*!
@@ -76,7 +76,7 @@ public:
   void command(uint8_t c);
   void data(uint8_t c);
  
-  void setContrast(uint8_t val);
+  void setContrast(uint8_t VbiasPot);
   uint8_t getContrast(void);
   
   void display(void);

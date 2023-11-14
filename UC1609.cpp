@@ -155,10 +155,10 @@ void UC1609::initDisplay() {
     delay(5);
   }
   
-  command(0xF1); /* set COM end (display height-1) */
-  command(63);
+  command(UC1609_SET_COM_END); /* set COM end (display height-1) */
+  command(LCDHEIGHT - 1);
   command(UC1609_TEMP_COMP_REG | UC1609_TEMP_COMP_SET); /* set temp. compensation */
-  command(UC1609_LCD_CONTROL | 0x0); /* SEG & COM normal */
+  command(UC1609_LCD_CONTROL | UC1609_ROTATION_DEFAULT); /* SEG & COM normal */
   command(UC1609_SCROLL | 0); /* set scroll line to zero */
   command(UC1609_POWER_CONTROL | UC1609_PC_SET); /* chare pump */
   command(UC1609_BIAS_RATIO | UC1609_BIAS_RATIO_SET); /* set bias 1/2 */
@@ -170,7 +170,7 @@ void UC1609::initDisplay() {
     AC1: 	0: first column then page, 1: first page, then column increment
     AC2:	0: increment page adr, 1: decrement page adr.
   */
-  command(UC1609_ADDRESS_CONTROL | 0x01); /* set auto increment, low bits are AC2 AC1 AC0 */
+  command(UC1609_ADDRESS_CONTROL | UC1609_ADDRESS_SET); /* set auto increment, low bits are AC2 AC1 AC0 */
   command(UC1609_FRAMERATE_REG | UC1609_FRAMERATE_SET); /* frame rate 95Hz */
 
   /*
