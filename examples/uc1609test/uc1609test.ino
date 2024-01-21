@@ -1,31 +1,33 @@
 /*********************************************************************
 This is an example sketch for UC1609 Monochrome LCD Displays
 
-These displays use SPI to communicate, 4 or 5 pins are required to
+These displays use I2C or SPI to communicate, 3-5 pins are required to  
 interface
+
 *********************************************************************/
 
-#include <SPI.h>
 #include <Adafruit_GFX.h>
 #include "UC1609.h"
 
-// Software SPI (slower updates, more flexible pin options):
-// pin 7 - Serial clock out (SCLK)
-// pin 6 - Serial data out (DIN)
-// pin 5 - Data/Command select (D/C)
-// pin 4 - LCD chip select (CS)
-// pin 3 - LCD reset (RST)
-UC1609 display = UC1609(7, 6, 5, 4, 3);
+// Used for software SPI
+#define OLED_CLK 13
+#define OLED_MOSI 11
 
-// Hardware SPI (faster, but must use certain hardware pins):
-// SCK is LCD serial clock (SCLK) - this is pin 13 on Arduino Uno
-// MOSI is LCD DIN - this is pin 11 on an Arduino Uno
-// pin 5 - Data/Command select (D/C)
-// pin 4 - LCD chip select (CS)
-// pin 3 - LCD reset (RST)
-// UC1609 display = UC1609(5, 4, 3);
-// Note with hardware SPI MISO and SS pins aren't used but will still be read
-// and written to during SPI transfer.  Be careful sharing these pins!
+// Used for software or hardware SPI
+#define OLED_CS 10
+#define OLED_DC 8
+
+// Used for I2C or SPI
+#define OLED_RESET -1
+
+// software SPI
+//UC1609 display(192, 64, OLED_MOSI, OLED_CLK, OLED_DC, OLED_RESET, OLED_CS);
+// hardware SPI - use 7Mhz (7000000UL) or lower because the screen is rated for 4MHz, or it will remain blank!
+//UC1609 display(192, 64, &SPI, OLED_DC, OLED_RESET, OLED_CS, 7000000UL);
+
+// I2C
+UC1609 display(192, 64, &Wire, OLED_RESET);
+
 
 #define NUMFLAKES 10
 #define XPOS 0
@@ -54,9 +56,119 @@ static const unsigned char PROGMEM logo16_glcd_bmp[] =
   0B01110000, 0B01110000,
   0B00000000, 0B00110000 };
 
+void setup()   {                
+  Serial.begin(9600);
+  while (! Serial) delay(100);
+  Serial.println("UC1609 LCD test");
+  
+  if ( ! display.begin() ) {
+     Serial.println("Unable to initialize LCD");
+     while (1) yield();
+  }
+
+  // init done
+  display.setContrast(136);
+
+  // draw a single pixel
+  display.drawPixel(10, 10, BLACK);
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw many lines
+  testdrawline();
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw rectangles
+  testdrawrect();
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw multiple rectangles
+  testfillrect();
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw mulitple circles
+  testdrawcircle();
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw a white circle, 10 pixel radius
+  display.fillCircle(display.width()/2, display.height()/2, 10, BLACK);
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  testdrawroundrect();
+  delay(1000);
+  display.clearDisplay();
+
+  testfillroundrect();
+  delay(1000);
+  display.clearDisplay();
+
+  testdrawtriangle();
+  delay(1000);
+  display.clearDisplay();
+   
+  testfilltriangle();
+  delay(1000);
+  display.clearDisplay();
+
+  // draw the first ~12 characters in the font
+  testdrawchar();
+  display.display();
+  delay(1000);
+  display.clearDisplay();
+
+  for (uint8_t rot=0; rot < 4; rot++) {
+    display.setRotation(rot);
+    display.clearDisplay();
+    // text display tests
+    display.setTextSize(1);
+    display.setTextColor(BLACK);
+    display.setCursor(0,0);
+    display.println("Hello, world!");
+    display.setTextColor(WHITE, BLACK); // 'inverted' text
+    display.println(3.141592);
+    display.setTextSize(2);
+    display.setTextColor(BLACK);
+    display.print("0x"); display.println(0xDEADBEEF, HEX);
+    display.display();
+    delay(1000);
+  }
+
+  display.setRotation(0);
+  
+  // miniature bitmap display
+  display.clearDisplay();
+  display.drawBitmap(30, 16,  logo16_glcd_bmp, 16, 16, BLACK);
+  display.display();
+
+  // invert the display
+  display.invertDisplay(true);
+  delay(1000); 
+  display.invertDisplay(false);
+  delay(1000); 
+
+  // draw a bitmap icon and 'animate' movement
+  testdrawbitmap(logo16_glcd_bmp, LOGO16_GLCD_HEIGHT, LOGO16_GLCD_WIDTH);
+}
+
+
+void loop() {
+}
+
+
 void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h) {
   uint8_t icons[NUMFLAKES][3];
-  randomSeed(123);     // whatever seed
+  randomSeed(666);     // whatever seed
  
   // initialize
   for (uint8_t f=0; f< NUMFLAKES; f++) {
@@ -75,25 +187,11 @@ void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h) {
   while (1) {
     // draw each icon
     for (uint8_t f=0; f< NUMFLAKES; f++) {
-      display.drawBitmap(icons[f][XPOS], icons[f][YPOS], bitmap, w, h, BLACK);
+      display.drawBitmap(icons[f][XPOS], icons[f][YPOS], logo16_glcd_bmp, w, h, BLACK);
     }
     display.display();
     delay(200);
-
-    while(Serial.available()) {
-        switch (Serial.read()) {
-          case 'w':display.setContrast(display.getContrast() + 1);
-                   break;
-          case 's':if(display.getContrast()) display.setContrast(display.getContrast() - 1);
-                     break;
-          case 'r':display.initDisplay();
-                   break;
-        }
-    }
-    Serial.print("contrast (w/s): 0x");
-    Serial.print(display.getContrast(), HEX);
-    Serial.print("   \r");
-
+    
     // then erase it + move it
     for (uint8_t f=0; f< NUMFLAKES; f++) {
       display.drawBitmap(icons[f][XPOS], icons[f][YPOS],  logo16_glcd_bmp, w, h, WHITE);
@@ -112,20 +210,21 @@ void testdrawbitmap(const uint8_t *bitmap, uint8_t w, uint8_t h) {
 
 void testdrawchar(void) {
   display.setTextSize(1);
+  display.setTextWrap(false);
   display.setTextColor(BLACK);
   display.setCursor(0,0);
 
   for (uint8_t i=0; i < 168; i++) {
     if (i == '\n') continue;
     display.write(i);
-    //if ((i > 0) && (i % 14 == 0))
-      //display.println();
+    if ((i > 0) && (i % 21 == 0))
+      display.println();
   }    
   display.display();
 }
 
 void testdrawcircle(void) {
-  for (int16_t i=0; i<display.height(); i+=2) {
+  for (uint8_t i=0; i<display.height(); i+=2) {
     display.drawCircle(display.width()/2, display.height()/2, i, BLACK);
     display.display();
   }
@@ -133,7 +232,7 @@ void testdrawcircle(void) {
 
 void testfillrect(void) {
   uint8_t color = 1;
-  for (int16_t i=0; i<display.height()/2; i+=3) {
+  for (uint8_t i=0; i<display.height()/2; i+=3) {
     // alternate colors
     display.fillRect(i, i, display.width()-i*2, display.height()-i*2, color%2);
     display.display();
@@ -142,7 +241,7 @@ void testfillrect(void) {
 }
 
 void testdrawtriangle(void) {
-  for (int16_t i=0; i<min(display.width(),display.height())/2; i+=5) {
+  for (uint16_t i=0; i<min(display.width(),display.height())/2; i+=5) {
     display.drawTriangle(display.width()/2, display.height()/2-i,
                      display.width()/2-i, display.height()/2+i,
                      display.width()/2+i, display.height()/2+i, BLACK);
@@ -151,19 +250,19 @@ void testdrawtriangle(void) {
 }
 
 void testfilltriangle(void) {
-  uint8_t color = BLACK;
+  uint8_t color = WHITE;
   for (int16_t i=min(display.width(),display.height())/2; i>0; i-=5) {
     display.fillTriangle(display.width()/2, display.height()/2-i,
                      display.width()/2-i, display.height()/2+i,
-                     display.width()/2+i, display.height()/2+i, color);
-    if (color == WHITE) color = BLACK;
-    else color = WHITE;
+                     display.width()/2+i, display.height()/2+i, BLACK);
+    if (color == BLACK) color = WHITE;
+    else color = BLACK;
     display.display();
   }
 }
 
 void testdrawroundrect(void) {
-  for (int16_t i=0; i<display.height()/2-2; i+=2) {
+  for (uint8_t i=0; i<display.height()/3-2; i+=2) {
     display.drawRoundRect(i, i, display.width()-2*i, display.height()-2*i, display.height()/4, BLACK);
     display.display();
   }
@@ -171,34 +270,34 @@ void testdrawroundrect(void) {
 
 void testfillroundrect(void) {
   uint8_t color = BLACK;
-  for (int16_t i=0; i<display.height()/2-2; i+=2) {
+  for (uint8_t i=0; i<display.height()/3-2; i+=2) {
     display.fillRoundRect(i, i, display.width()-2*i, display.height()-2*i, display.height()/4, color);
-    if (color == WHITE) color = BLACK;
-    else color = WHITE;
+    if (color == BLACK) color = WHITE;
+    else color = BLACK;
     display.display();
   }
 }
    
 void testdrawrect(void) {
-  for (int16_t i=0; i<display.height()/2; i+=2) {
+  for (uint8_t i=0; i<display.height()/2; i+=2) {
     display.drawRect(i, i, display.width()-2*i, display.height()-2*i, BLACK);
     display.display();
   }
 }
 
 void testdrawline() {  
-  for (int16_t i=0; i<display.width(); i+=4) {
+  for (uint8_t i=0; i<display.width(); i+=4) {
     display.drawLine(0, 0, i, display.height()-1, BLACK);
     display.display();
   }
-  for (int16_t i=0; i<display.height(); i+=4) {
+  for (uint8_t i=0; i<display.height(); i+=4) {
     display.drawLine(0, 0, display.width()-1, i, BLACK);
     display.display();
   }
   delay(250);
   
   display.clearDisplay();
-  for (int16_t i=0; i<display.width(); i+=4) {
+  for (uint8_t i=0; i<display.width(); i+=4) {
     display.drawLine(0, display.height()-1, i, 0, BLACK);
     display.display();
   }
@@ -209,140 +308,24 @@ void testdrawline() {
   delay(250);
   
   display.clearDisplay();
-  for (int16_t i=display.width()-1; i>=0; i-=4) {
+  for (int8_t i=display.width()-1; i>=0; i-=4) {
     display.drawLine(display.width()-1, display.height()-1, i, 0, BLACK);
     display.display();
   }
-  for (int16_t i=display.height()-1; i>=0; i-=4) {
-    display.drawLine(display.width()-1, display.height()-1, 0, i, BLACK);
+  for (int8_t i=display.height()-1; i>=0; i-=4) {
+    display.drawLine(display.width()-1, display.height()-1, 0, i, WHITE);
     display.display();
   }
   delay(250);
 
   display.clearDisplay();
-  for (int16_t i=0; i<display.height(); i+=4) {
+  for (uint8_t i=0; i<display.height(); i+=4) {
     display.drawLine(display.width()-1, 0, 0, i, BLACK);
     display.display();
   }
-  for (int16_t i=0; i<display.width(); i+=4) {
+  for (uint8_t i=0; i<display.width(); i+=4) {
     display.drawLine(display.width()-1, 0, i, display.height()-1, BLACK); 
     display.display();
   }
   delay(250);
-}
-
-void setup()   {
-  Serial.begin(9600);
-Serial.println("UC1609 test");
-  display.begin();
-  // init done
-
-  // you can change the contrast around to adapt the display
-  // for the best viewing!
-  display.setContrast(136);
-  
-  // draw a single pixel
-  display.drawPixel(10, 10, BLACK);
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw many lines
-  testdrawline();
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw rectangles
-  testdrawrect();
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw multiple rectangles
-  testfillrect();
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw mulitple circles
-  testdrawcircle();
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw a circle, 10 pixel radius
-  display.fillCircle(display.width()/2, display.height()/2, 10, BLACK);
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  testdrawroundrect();
-  delay(2000);
-  display.clearDisplay();
-
-  testfillroundrect();
-  delay(2000);
-  display.clearDisplay();
-
-  testdrawtriangle();
-  delay(2000);
-  display.clearDisplay();
-   
-  testfilltriangle();
-  delay(2000);
-  display.clearDisplay();
-
-  // draw the first ~12 characters in the font
-  testdrawchar();
-  display.display();
-  delay(2000);
-  display.clearDisplay();
-
-  // text display tests
-  display.setTextSize(1);
-  display.setTextColor(BLACK);
-  display.setCursor(0,0);
-  display.println("Hello, world!");
-  display.setTextColor(WHITE, BLACK); // 'inverted' text
-  display.println(3.141592);
-  display.setTextSize(2);
-  display.setTextColor(BLACK);
-  display.print("0x"); display.println(0xDEADBEEF, HEX);
-  display.display();
-  delay(2000);
-
-  // rotation example
-  display.clearDisplay();
-  display.setRotation(1);  // rotate 90 degrees counter clockwise, can also use values of 2 and 3 to go further.
-  display.setTextSize(1);
-  display.setTextColor(BLACK);
-  display.setCursor(0,0);
-  display.println("Rotation");
-  display.setTextSize(2);
-  display.println("Example!");
-  display.display();
-  delay(2000);
-
-  // revert back to no rotation
-  display.setRotation(0);
-
-  // miniature bitmap display
-  display.clearDisplay();
-  display.drawBitmap(30, 16,  logo16_glcd_bmp, 16, 16, 1);
-  display.display();
-
-  // invert the display
-  display.invertDisplay(true);
-  delay(1000); 
-  display.invertDisplay(false);
-  delay(1000); 
-
-  // draw a bitmap icon and 'animate' movement
-  testdrawbitmap(logo16_glcd_bmp, LOGO16_GLCD_WIDTH, LOGO16_GLCD_HEIGHT);
-}
-
-
-void loop() {
-  
 }

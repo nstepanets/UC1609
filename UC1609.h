@@ -1,7 +1,7 @@
 /**********************************************************************************
 * This is a library for UC1609 Monochrome LCD Display.
-* These displays use SPI to communicate, 4 or 5 pins are required to  
-*   interface
+* These displays use I2C or SPI to communicate
+*
 * This is a free library WITH NO WARRANTY, use it at your own risk!
 ***********************************************************************************
 * This library depends on Adafruit GFX library at
@@ -9,19 +9,38 @@
 *   being present on your system. Please make sure you have installed the latest
 *   version before using this library.
 ***********************************************************************************/
-#ifndef _UC1609_H
-#define _UC1609_H
 
-#include "Arduino.h"
+#if defined(ARDUINO_STM32_FEATHER)
+typedef class HardwareSPI SPIClass;
+#endif
+
 #include <Adafruit_GFX.h>
-#include <Adafruit_SPIDevice.h>
 #include <SPI.h>
+#include <Wire.h>
 
-#define BLACK 1 ///< Black pixel
-#define WHITE 0 ///< White pixel
+#if defined(__AVR__)
+typedef volatile uint8_t PortReg;
+typedef uint8_t PortMask;
+#define HAVE_PORTREG
+#elif defined(__SAM3X8E__)
+typedef volatile RwReg PortReg;
+typedef uint32_t PortMask;
+#define HAVE_PORTREG
+#elif (defined(__arm__) || defined(ARDUINO_FEATHER52)) &&                      \
+    !defined(ARDUINO_ARCH_MBED) && !defined(ARDUINO_ARCH_RP2040)
+typedef volatile uint32_t PortReg;
+typedef uint32_t PortMask;
+#define HAVE_PORTREG
+#endif
 
-#define LCDWIDTH 192  ///< LCD is 192 pixels wide
-#define LCDHEIGHT 64 ///< 64 pixels high
+#define LCDWIDTH 192
+#define LCDHEIGHT 64
+
+#define BLACK 1
+#define WHITE 0
+#define INVERSE 2
+
+#define UC1609_I2C_ADDRESS 0x3C
 
 // UC1909 Write registers
 #define UC1609_SYSTEM_RESET 0xE2 /**< System Reset */
@@ -60,44 +79,70 @@
 #define UC1609_ROTATION_FLIP 0x02
 #define UC1609_ROTATION_DEFAULT 0x00
 
-/**************************************************************************/
-/*!
-    @brief The UC1609 class
- */
+/*! The controller object for UC1609 displays */
 class UC1609 : public Adafruit_GFX {
 public:
-  UC1609(int8_t sclk_pin, int8_t din_pin, int8_t dc_pin,
-                   int8_t cs_pin, int8_t rst_pin);
-  UC1609(int8_t dc_pin, int8_t cs_pin, int8_t rst_pin,
-                   SPIClass *theSPI = &SPI);
+  UC1609(uint8_t w, uint8_t h, TwoWire *twi = &Wire,
+         int8_t rst_pin = -1, uint32_t clkDuring = 400000UL,
+         uint32_t clkAfter = 100000UL);
+  UC1609(uint8_t w, uint8_t h, int8_t mosi_pin, int8_t sclk_pin,
+         int8_t dc_pin, int8_t rst_pin, int8_t cs_pin);
+  UC1609(uint8_t w, uint8_t h, SPIClass *spi_ptr, int8_t dc_pin,
+         int8_t rst_pin, int8_t cs_pin, uint32_t bitrate = 8000000UL);
   ~UC1609(void);
 
-  bool begin();
-  void command(uint8_t c);
-  void data(uint8_t c);
- 
-  void setContrast(uint8_t VbiasPot);
-  uint8_t getContrast(void);
-  
+  bool begin(uint8_t i2caddr = UC1609_I2C_ADDRESS, bool reset = true, bool periphBegin = true);
   void display(void);
   void clearDisplay(void);
+  void invertDisplay(bool i);
+  void drawPixel(int16_t x, int16_t y, uint16_t color);
+  void uc1609_command(uint8_t c);
+  bool getPixel(int16_t x, int16_t y);
+  uint8_t *getBuffer(void);
+
+  void setContrast(uint8_t val);
+  uint8_t getContrast(void);
+
+  void sleep(void);
+  void wake(void);
+
+protected:
+  inline void SPIwrite(uint8_t d) __attribute__((always_inline));
+  void uc1609_command1(uint8_t c);
+  void uc1609_commandList(const uint8_t *c, uint8_t n);
 
   void updateBoundingBox(uint8_t xmin, uint8_t ymin, uint8_t xmax,
                          uint8_t ymax);
-  void drawPixel(int16_t x, int16_t y, uint16_t color);
+  uint8_t xUpdateMin, xUpdateMax, yUpdateMin, yUpdateMax;
 
-  void initDisplay();
-  void invertDisplay(bool i);
-
-private:
-  Adafruit_SPIDevice *spi_dev = NULL;
+  SPIClass *spi;   ///< Initialized during construction when using SPI. See
+                   ///< SPI.cpp, SPI.h
+  TwoWire *wire;   ///< Initialized during construction when using I2C. See
+                   ///< Wire.cpp, Wire.h
   uint8_t *buffer; ///< Buffer data used for display buffer. Allocated when
                    ///< begin method is called.
 
-  int8_t _rstpin = -1, _dcpin = -1;
+  int8_t i2caddr;  ///< I2C address initialized when begin method is called.
+  int8_t mosiPin;  ///< (Master Out Slave In) set when using SPI set during
+                   ///< construction.
+  int8_t clkPin;   ///< (Clock Pin) set when using SPI set during construction.
+  int8_t dcPin;    ///< (Data Pin) set when using SPI set during construction.
+  int8_t
+      csPin; ///< (Chip Select Pin) set when using SPI set during construction.
+  int8_t rstPin; ///< Display reset pin assignment. Set during construction.
 
-  uint8_t _VbiasPot;        ///< Contrast level, Vop
-  uint8_t xUpdateMin, xUpdateMax, yUpdateMin, yUpdateMax;
-};
-
+#ifdef HAVE_PORTREG
+  PortReg *mosiPort, *clkPort, *dcPort, *csPort;
+  PortMask mosiPinMask, clkPinMask, dcPinMask, csPinMask;
 #endif
+#if ARDUINO >= 157
+  uint32_t wireClk;    ///< Wire speed for UC1609 transfers
+  uint32_t restoreClk; ///< Wire speed following UC1609 transfers
+#endif
+  uint8_t _contrast = 0x88; ///< contrast setting (0x00~0xFF)
+#if defined(SPI_HAS_TRANSACTION)
+protected:
+  // Allow sub-class to change
+  SPISettings spiSettings;
+#endif
+};
