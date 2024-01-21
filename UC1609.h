@@ -40,7 +40,7 @@ typedef uint32_t PortMask;
 #define WHITE 0
 #define INVERSE 2
 
-#define UC1609_I2C_ADDRESS 0x3C
+#define UC1609_I2C_ADDRESS 0x3C // 0x3E
 
 // UC1909 Write registers
 #define UC1609_SYSTEM_RESET 0xE2 /**< System Reset */

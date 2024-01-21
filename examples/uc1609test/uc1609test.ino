@@ -61,7 +61,7 @@ void setup()   {
   while (! Serial) delay(100);
   Serial.println("UC1609 LCD test");
   
-  if ( ! display.begin() ) {
+  if ( ! display.begin(0x3C) ) {
      Serial.println("Unable to initialize LCD");
      while (1) yield();
   }
