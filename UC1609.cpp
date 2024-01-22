@@ -281,7 +281,7 @@ inline void UC1609::SPIwrite(uint8_t d) {
 */
 void UC1609::uc1609_command1(uint8_t c) {
   if (wire) { // I2C
-    wire->beginTransmission(i2caddr | 0x00); // CD = 0
+    wire->beginTransmission(i2caddr & 0xFE); // CD = 0
     WIRE_WRITE(c);
     wire->endTransmission();
   } else { // SPI (hw or soft) -- transaction started in calling function
@@ -304,12 +304,12 @@ void UC1609::uc1609_command1(uint8_t c) {
 */
 void UC1609::uc1609_commandList(const uint8_t *c, uint8_t n) {
   if (wire) { // I2C
-    wire->beginTransmission(i2caddr | 0x00); // CD = 0
+    wire->beginTransmission(i2caddr & 0xFE); // CD = 0
     uint16_t bytesOut = 0;
     while (n--) {
       if (bytesOut >= WIRE_MAX) {
         wire->endTransmission();
-        wire->beginTransmission(i2caddr | 0x00); // CD = 0
+        wire->beginTransmission(i2caddr & 0xFE); // CD = 0
         bytesOut = 0;
       }
       WIRE_WRITE(pgm_read_byte(c++));
