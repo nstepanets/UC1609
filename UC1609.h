@@ -66,7 +66,7 @@ typedef uint32_t PortMask;
 #define UC1609_BIAS_RATIO_SET 0x03 /**<  Set BR[1:0] = 11 (set to 9 default, 11b = 9) */
 
 #define UC1609_GN_PM 0x81 /**< Set V BIAS Potentiometer to fine tune V-D and V-LCD  (double-byte command) */
-#define UC1609_DEFAULT_GN_PM 0x49 /**< default only used if user does not specify Vbias */
+#define UC1609_DEFAULT_GN_PM 0x88 /**< default only used if user does not specify Vbias */
 
 #define UC1609_LCD_CONTROL 0xC0 /**< Rotate map control */
 #define UC1609_DISPLAY_ON 0xAE /**< enables display */
@@ -139,7 +139,7 @@ protected:
   uint32_t wireClk;    ///< Wire speed for UC1609 transfers
   uint32_t restoreClk; ///< Wire speed following UC1609 transfers
 #endif
-  uint8_t _contrast = 0x88; ///< contrast setting (0x00~0xFF)
+  uint8_t _contrast = UC1609_DEFAULT_GN_PM; ///< contrast setting (0x00~0xFF)
 #if defined(SPI_HAS_TRANSACTION)
 protected:
   // Allow sub-class to change
