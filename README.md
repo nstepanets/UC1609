@@ -20,3 +20,5 @@ CD pin is not used in I2C mode and should be connected to Vss
 When RST pin is not used (since RST pin is not required for proper chip operation), connect the pin to "H"
 
 ![I2C mod](https://github.com/nstepanets/UC1609/blob/d6e61c78ad12e1b4f57803de1b8746e4804b48e0/images/UC1609_i2c_mod.jpg)
+
+To select I2C mode, SPI displays require a little modification - isolate Pin 9 from Vss and connect Pin 9 and Pin 15 to Vdd.
