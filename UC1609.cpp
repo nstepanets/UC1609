@@ -520,7 +520,7 @@ void UC1609::drawPixel(int16_t x, int16_t y, uint16_t color) {
 */
 void UC1609::clearDisplay(void) {
   memset(buffer, 0, WIDTH * ((HEIGHT + 7) / 8));
-  updateBoundingBox(0, 0, LCDWIDTH - 1, LCDHEIGHT - 1);
+  updateBoundingBox(0, 0, WIDTH - 1, HEIGHT - 1);
 }
 
 /*!
@@ -589,8 +589,8 @@ void UC1609::display(void) {
 
   uint8_t first_page = yUpdateMin / 8;
   uint8_t last_page = (yUpdateMax + 7) / 8;
-  uint8_t page_start = min((int16_t)bytes_per_page, xUpdateMin);
-  uint8_t page_end = max((int16_t)0, xUpdateMax);
+  uint8_t page_start = min(bytes_per_page, xUpdateMin);
+  uint8_t page_end = max((uint8_t)0, xUpdateMax);
 
   for(uint16_t p = first_page; p < last_page ; p++) {
     uint8_t bytes_remaining = bytes_per_page;
@@ -603,7 +603,7 @@ void UC1609::display(void) {
 
     uint8_t cmd[] = {uint8_t(UC1609_SET_PAGEADD | p),
                      uint8_t(UC1609_SET_COLADD_MSB | (page_start >> 4)),
-                     uint8_t(UC1609_SET_COLADD_LSB | (page_start & 0xF))};
+                     uint8_t(UC1609_SET_COLADD_LSB | (page_start & 0x0F))};
     uc1609_commandList(cmd, sizeof(cmd));
 
     if (wire) { // I2C
@@ -631,9 +631,9 @@ void UC1609::display(void) {
 #endif
 
   // reset bounding box
-  xUpdateMin = LCDWIDTH - 1;
+  xUpdateMin = WIDTH - 1;
   xUpdateMax = 0;
-  yUpdateMin = LCDHEIGHT - 1;
+  yUpdateMin = HEIGHT - 1;
   yUpdateMax = 0;
 }
 
