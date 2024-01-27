@@ -611,7 +611,7 @@ void UC1609::display(void) {
       uint16_t bytesOut = 0;
       while (bytes_remaining--) {
         if (bytesOut >= WIRE_MAX) {
-          wire->endTransmission(false);
+          wire->endTransmission();
           wire->beginTransmission(i2caddr | 0x01); // CD = 1
           bytesOut = 0;
         }
